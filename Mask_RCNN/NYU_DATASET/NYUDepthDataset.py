@@ -165,7 +165,7 @@ if __name__ == '__main__':
     nyu_path = 'nyu_depth_v2_labeled.mat'
     nyu_ds_train = NYUDepthDataset()
     nyu_ds_train.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
-
+    nyu_ds_train.prepare()
     if (command == "data_inspect"):
         nyu_ds_train.prepare()
         image_id = 472
@@ -187,7 +187,8 @@ if __name__ == '__main__':
     if(command == 'train'):
         config = NYUConfig()
         nyu_ds_dev = NYUDepthDataset(type='dev')
-        nyu_ds_train.prepare()
+        nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
+        nyu_ds_dev.prepare()
         # Training - Stage 2
         # Finetune layers from ResNet stage 4 and up
         model = modellib.MaskRCNN(mode="training", config=config,
