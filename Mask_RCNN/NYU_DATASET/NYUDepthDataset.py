@@ -5,6 +5,7 @@ import random
 import sys
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
+PROJ_DIR = os.path.abspath("../")
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn import visualize
@@ -17,39 +18,46 @@ command = 'train'
 COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # Directory to save logs and model checkpoints, if not provided
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
-
+NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
+NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [1249, 100, 100]
+            self.dataset_size = [.8, .1, .1]
             self.datasets = {}
             self.classes = {}
         def __str__(self):
             pass
 
         def load_dataset(self, path):
-            print("load dataset: %s" % (path))
+            print("load dataset: %s" % (NYU_DATASET_PATH))
             if ('train' in self.datasets.keys()):
                 return
 
-            f = h5py.File(path)
+            f = h5py.File(NYU_DATASET_PATH)
             i = 1
             for c in f.get("names").value[0]:
                 self.classes[i] = "".join([chr(j) for j in f[c].value])
                 i += 1
 
-            train_dataset = []
-            dev_dataset = []
-            test_dataset = []
 
+            img_num = len(f['images'])
+            train_data_size = int(self.dataset_size[0] * img_num)
+            train_dataset = dict(zip(range(0, train_data_size), range(0, train_data_size)))
+            dev_data_size = int(self.dataset_size[1] * img_num)
+            dev_dataset = dict(zip(range(train_data_size, train_data_size + dev_data_size), range(0, dev_data_size)))
+            test_data_size = int(self.dataset_size[2] * img_num)
+            test_dataset = dict(zip(range(train_data_size + dev_data_size, img_num), range(0, test_data_size)))
+
+            '''
             for i, (image, depth) in enumerate(zip(f['images'], f['depths'])):
-                rgb_image = image.transpose(2, 1, 0)
-                ra_depth = depth.transpose(1, 0)
+                rgb_image = f['images'][i,:,:,:].T #image.transpose(2, 1, 0)
+                ra_depth = f['depths'][i,:,:].T #depth.transpose(1, 0)
                 depth_image = (ra_depth / np.max(ra_depth)) * 255.0
                 image_labels = f['labels'][i, :, :].T
                 # image_pil = Image.fromarray(np.uint8(ra_image))
                 # depth_pil = Image.fromarray(np.uint8(re_depth))
-                image_name = os.path.join("data", "nyu_datasets", "%05d.jpg" % (i))
+                #image_name = os.path.join("data", "nyu_datasets", "%05d.jpg" % (i))
                 # image_pil.save(image_name)
                 # depth_name = os.path.join("data", "nyu_datasets", "%05d.png" % (i))
                 # depth_pil.save(depth_name)
@@ -63,13 +71,27 @@ class NUYDataObject():
 
             random.shuffle(train_dataset)
             random.shuffle(dev_dataset)
-            random.shuffle(test_dataset)
+            random.shuffle(test_dataset)'''
             self.datasets['train'] = train_dataset
             self.datasets['dev'] = dev_dataset
             self.datasets['test'] = test_dataset
+            f.close()
+
 
         def load_image(self, image_id, dstype='train', imagetype='rgb'):
-            return self.datasets[dstype][image_id][imagetype]
+
+            img_id = self.datasets[dstype][image_id]
+            f = h5py.File(NYU_DATASET_PATH)
+            if imagetype == 'rgb':
+                image = f['images'][img_id, :, :, :].T  # image.transpose(2, 1, 0)
+            elif imagetype == 'depth':
+                ra_depth = f['depths'][img_id, :, :].T  # depth.transpose(1, 0)
+                image = (ra_depth / np.max(ra_depth)) * 255.0
+            else:
+                image = f['labels'][img_id, :, :].T
+
+            f.close()
+            return image
 
 
         def getClasses(self):
@@ -120,8 +142,8 @@ class NYUDepthDataset(utils.Dataset):
         classes = self.nyu_do.getClasses()
         for k, v in classes.items():
             self.add_class("NYU", k, v)
-        for i in range(len(self.nyu_do.datasets[self.type])):
-            self.add_image("NYU", image_id=i,path=None)
+        for k in self.nyu_do.datasets[self.type].keys():
+            self.add_image("NYU", image_id=k,path=None)
 
 
     def load_image(self, image_id):
