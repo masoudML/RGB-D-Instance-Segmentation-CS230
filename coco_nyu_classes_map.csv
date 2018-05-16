@@ -1,0 +1,81 @@
+﻿CLASS_NAME,COCO_CLASS_ID,NYU_CLASS_ID
+unlabeled,0,0
+person,1,331
+bicycle,2,189
+car,3,530
+motorcycle,4,-1
+airplane,5,-1
+bus,6,-1
+train,7,-1
+truck,8,391
+boat,9,789
+traffic light,10,-1
+fire hydrant,11,-1
+sign,13,208
+parking meter,14,-1
+bench,15,204
+bird,16,-1
+cat,17,594
+dog,18,701
+horse,19,-1
+sheep,20,-1
+cow,21,-1
+elephant,22,-1
+bear,23,-1
+zebra,24,-1
+giraffe,25,-1
+backpack,27,206
+umbrella,28,203
+handbag,31,-1
+tie,32,315
+suitcase,33,199
+frisbee,34,-1
+skis,35,-1
+snowboard,36,-1
+sports ball,37,60
+kite,38,-1
+baseball bat,39,-1
+baseball glove,40,-1
+skateboard,41,-1
+surfboard,42,-1
+tennis racket,43,626
+bottle,44,2
+wine glass,46,293
+cup,47,35
+fork,48,349
+spoon,50,283
+bowl,51,22
+banana,52,147
+apple,53,334
+sandwitch,54,246
+orange,55,709
+broccoli,56,-1
+carrot,57,-1
+hot dog,58,722
+pizza,59,247
+donut,60,-1
+cake,61,289
+chair,62,5
+couch,63,83
+potted plant,64,-1
+bed,65,157
+dinning table,67,19
+toilet,70,124
+tv,72,172
+laptop,73,37
+mouse,74,103
+remote,75,175
+keyboard,76,47
+cell phone,77,290
+microwave,78,13
+oven,79,238
+toaster,80,251
+sink,81,24
+refrigerator,82,17
+book,84,1
+clock,85,56
+vase,86,78
+scissors,87,29
+teddy bear,88,-1
+hair dryer,89,577
+toothbrush,90,127
