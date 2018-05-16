@@ -15,7 +15,7 @@ import pandas as pd
 
 from mrcnn.config import Config
 from coco.coco import CocoConfig
-command = 'data_inspect'
+command = 'train'
 COCO_MODEL_PATH = os.path.join(PROJ_DIR, "mask_rcnn_coco.h5")
 COCO_NYU_CLASS_MAP_PATH = os.path.join(PROJ_DIR, "coco_nyu_classes_map.csv")
 
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     nyu_ds_train.prepare()
     if (command == "data_inspect"):
         nyu_ds_train.prepare()
-        image_id = 472
+        image_id = 257
         image = nyu_ds_train.load_image(image_id)
         mask, class_ids = nyu_ds_train.load_mask(image_id)
 
