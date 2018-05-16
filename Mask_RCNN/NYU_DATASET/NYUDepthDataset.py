@@ -13,11 +13,11 @@ from mrcnn.model import log
 from mrcnn import model as modellib, utils
 
 from mrcnn.config import Config
-
+from coco.coco import CocoConfig
 command = 'train'
-COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
+COCO_MODEL_PATH = os.path.join(PROJ_DIR, "mask_rcnn_coco.h5")
 # Directory to save logs and model checkpoints, if not provided
-DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
+DEFAULT_LOGS_DIR = os.path.join(PROJ_DIR, "logs")
 NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
 NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
 class NUYDataObject():
@@ -111,7 +111,7 @@ class NUYDataObject():
         return setattr(self.instance, name)
 
 
-class NYUConfig(Config):
+class NYUConfig(CocoConfig):
     """Configuration for training on MS COCO.
     Derives from the base Config class and overrides values specific
     to the COCO dataset.
@@ -121,13 +121,13 @@ class NYUConfig(Config):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 16
 
     # Uncomment to train on 8 GPUs (default is 1)
     # GPU_COUNT = 8
 
     # Number of classes (including background)
-    NUM_CLASSES = 895
+    NUM_CLASSES = 1 + 80
 
 class NYUDepthDataset(utils.Dataset):
     def __init__(self, type='train'):
@@ -207,14 +207,20 @@ if __name__ == '__main__':
         visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train.class_names)
 
     if(command == 'train'):
+
         config = NYUConfig()
         nyu_ds_dev = NYUDepthDataset(type='dev')
         nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
         nyu_ds_dev.prepare()
         # Training - Stage 2
         # Finetune layers from ResNet stage 4 and up
+        config.display()
         model = modellib.MaskRCNN(mode="training", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
+
+        print("Loading weights ", COCO_MODEL_PATH)
+        model.load_weights(COCO_MODEL_PATH, by_name=True)
+
         print("Fine tune Resnet stage 4 and up")
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
