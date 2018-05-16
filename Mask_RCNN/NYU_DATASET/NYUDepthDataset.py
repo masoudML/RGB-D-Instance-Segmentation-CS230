@@ -11,11 +11,14 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn import visualize
 from mrcnn.model import log
 from mrcnn import model as modellib, utils
+import pandas as pd
 
 from mrcnn.config import Config
 from coco.coco import CocoConfig
-command = 'train'
+command = 'data_inspect'
 COCO_MODEL_PATH = os.path.join(PROJ_DIR, "mask_rcnn_coco.h5")
+COCO_NYU_CLASS_MAP_PATH = os.path.join(PROJ_DIR, "coco_nyu_classes_map.csv")
+
 # Directory to save logs and model checkpoints, if not provided
 DEFAULT_LOGS_DIR = os.path.join(PROJ_DIR, "logs")
 NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
@@ -25,7 +28,10 @@ class NUYDataObject():
         def __init__(self):
             self.dataset_size = [.8, .1, .1]
             self.datasets = {}
-            self.classes = {}
+            self.coco_nyu_class_map = pd.read_csv(COCO_NYU_CLASS_MAP_PATH)
+            self.classes = dict(zip(self.coco_nyu_class_map.COCO_CLASS_ID, self.coco_nyu_class_map.CLASS_NAME))
+            self.nyu_coco_map = dict(zip(self.coco_nyu_class_map.NYU_CLASS_ID, self.coco_nyu_class_map.COCO_CLASS_ID))
+
         def __str__(self):
             pass
 
@@ -35,11 +41,6 @@ class NUYDataObject():
                 return
 
             f = h5py.File(NYU_DATASET_PATH)
-            i = 1
-            for c in f.get("names").value[0]:
-                self.classes[i] = "".join([chr(j) for j in f[c].value])
-                i += 1
-
 
             img_num = len(f['images'])
             train_data_size = int(self.dataset_size[0] * img_num)
@@ -97,6 +98,12 @@ class NUYDataObject():
         def getClasses(self):
             return self.classes
 
+        def NYUtoCOCOClassId(self, nyu_cls_id):
+            ret = -1
+            if nyu_cls_id in self.nyu_coco_map.keys():
+                ret = self.nyu_coco_map[nyu_cls_id]
+            return ret
+
     instance = None
 
     def __new__(cls):  # __new__ always a classmethod
@@ -140,6 +147,11 @@ class NYUDepthDataset(utils.Dataset):
         """
         self.nyu_do.load_dataset(path)
         classes = self.nyu_do.getClasses()
+        #import pandas as pd
+        #writer = pd.ExcelWriter('nyu_classes.xlsx')
+        #df = pd.DataFrame.from_dict(list(classes.items()))
+        #df.to_excel(writer,'sheet1')
+       # writer.save()
         for k, v in classes.items():
             self.add_class("NYU", k, v)
         for k in self.nyu_do.datasets[self.type].keys():
@@ -166,14 +178,16 @@ class NYUDepthDataset(utils.Dataset):
         # Build mask of shape [height, width, instance_count] and list
         # of class IDs that correspond to each channel of the mask.
         for c in image_instances_classes:
-
+            coco_cls_id = self.nyu_do.NYUtoCOCOClassId(c)
+            if (coco_cls_id == -1 or coco_cls_id == 0):
+                continue
             m = (labels == c)
             # Some objects are so small that they're less than 1 pixel area
             # and end up rounded out. Skip those objects.
             if m.max() < 1:
                 continue
             instance_masks.append(m)
-            class_ids.append(c)
+            class_ids.append(coco_cls_id)
 
         # Pack instance masks into an array
         if class_ids:
@@ -181,6 +195,8 @@ class NYUDepthDataset(utils.Dataset):
             class_ids = np.array(class_ids, dtype=np.int32)
             return mask, class_ids
 
+    def getClasses(self):
+        return self.nyu_do.getClasses()
 if __name__ == '__main__':
 
     current_directory = os.getcwd()
@@ -204,7 +220,7 @@ if __name__ == '__main__':
         log("class_ids", class_ids)
         log("bbox", bbox)
         # Display image and instances
-        visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train.class_names)
+        visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train)
 
     if(command == 'train'):
 
