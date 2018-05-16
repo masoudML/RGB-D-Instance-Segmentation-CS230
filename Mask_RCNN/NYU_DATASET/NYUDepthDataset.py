@@ -12,6 +12,7 @@ from mrcnn import visualize
 from mrcnn.model import log
 from mrcnn import model as modellib, utils
 import pandas as pd
+import imgaug
 
 from mrcnn.config import Config
 from coco.coco import CocoConfig
@@ -155,7 +156,7 @@ class NYUDepthDataset(utils.Dataset):
         for k, v in classes.items():
             self.add_class("NYU", k, v)
         for k in self.nyu_do.datasets[self.type].keys():
-            self.add_image("NYU", image_id=k,path=None)
+            self.add_image("NYU", image_id=k,path=NYU_DATASET_PATH)
 
 
     def load_image(self, image_id):
@@ -179,7 +180,7 @@ class NYUDepthDataset(utils.Dataset):
         # of class IDs that correspond to each channel of the mask.
         for c in image_instances_classes:
             coco_cls_id = self.nyu_do.NYUtoCOCOClassId(c)
-            if (coco_cls_id == -1 or coco_cls_id == 0):
+            if (coco_cls_id == -1):
                 continue
             m = (labels == c)
             # Some objects are so small that they're less than 1 pixel area
@@ -228,6 +229,8 @@ if __name__ == '__main__':
         nyu_ds_dev = NYUDepthDataset(type='dev')
         nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
         nyu_ds_dev.prepare()
+
+        augmentation = imgaug.augmenters.Fliplr(0.5)
         # Training - Stage 2
         # Finetune layers from ResNet stage 4 and up
         config.display()
@@ -241,4 +244,5 @@ if __name__ == '__main__':
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
                     epochs=10,
-                    layers='4+')
+                    layers='4+',
+                    augmentation=augmentation)

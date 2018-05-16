@@ -1,4 +1,5 @@
 ﻿CLASS_NAME,COCO_CLASS_ID,NYU_CLASS_ID
+unlabeled,0,0
 person,1,331
 bicycle,2,189
 car,3,530
