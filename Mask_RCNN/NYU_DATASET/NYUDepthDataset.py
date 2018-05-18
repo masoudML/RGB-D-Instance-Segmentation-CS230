@@ -6,6 +6,9 @@ import sys
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
 PROJ_DIR = os.path.abspath("../")
+print(PROJ_DIR)
+sys.path.append(PROJ_DIR)
+print ('\n'.join(sys.path))
 # Import Mask RCNN
 sys.path.append(PROJ_DIR)  # To find local version of the library
 from mrcnn import visualize
@@ -41,7 +44,7 @@ class NUYDataObject():
             if ('train' in self.datasets.keys()):
                 return
 
-            f = h5py.File(NYU_DATASET_PATH)
+            f = h5py.File(NYU_DATASET_PATH, 'r')
 
             img_num = len(f['images'])
             train_data_size = int(self.dataset_size[0] * img_num)
@@ -83,7 +86,7 @@ class NUYDataObject():
         def load_image(self, image_id, dstype='train', imagetype='rgb'):
 
             img_id = self.datasets[dstype][image_id]
-            f = h5py.File(NYU_DATASET_PATH)
+            f = h5py.File(NYU_DATASET_PATH, 'r')
             if imagetype == 'rgb':
                 image = f['images'][img_id, :, :, :].T  # image.transpose(2, 1, 0)
             elif imagetype == 'depth':
