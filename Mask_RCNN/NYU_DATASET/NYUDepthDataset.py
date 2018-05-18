@@ -7,7 +7,7 @@ import sys
 ROOT_DIR = os.path.abspath("../../")
 PROJ_DIR = os.path.abspath("../")
 # Import Mask RCNN
-sys.path.append(ROOT_DIR)  # To find local version of the library
+sys.path.append(PROJ_DIR)  # To find local version of the library
 from mrcnn import visualize
 from mrcnn.model import log
 from mrcnn import model as modellib, utils
