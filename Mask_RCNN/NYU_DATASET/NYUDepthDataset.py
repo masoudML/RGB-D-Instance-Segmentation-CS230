@@ -205,6 +205,10 @@ class NYUDepthDataset(utils.Dataset):
 
     def getClasses(self):
         return self.nyu_do.getClasses()
+
+def evaluate_model(model, dataset):
+    pass
+
 if __name__ == '__main__':
 
     current_directory = os.getcwd()
@@ -253,3 +257,9 @@ if __name__ == '__main__':
                     epochs=10,
                     layers='4+',
                     augmentation=augmentation)
+
+        # Validation dataset
+        dataset_val = NYUDepthDataset(type='dev')
+        dataset_val.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
+        dataset_val.prepare()
+        evaluate_model(model, dataset_val)
