@@ -8,7 +8,6 @@ ROOT_DIR = os.path.abspath("../../")
 PROJ_DIR = os.path.abspath("../")
 print(PROJ_DIR)
 sys.path.append(PROJ_DIR)
-print ('\n'.join(sys.path))
 # Import Mask RCNN
 sys.path.append(PROJ_DIR)  # To find local version of the library
 from mrcnn import visualize
