@@ -55,6 +55,8 @@ class NUYDataObject():
             test_dataset = dict(zip(range(train_data_size + dev_data_size, img_num), range(0, test_data_size)))
 
             '''
+            
+            
             for i, (image, depth) in enumerate(zip(f['images'], f['depths'])):
                 rgb_image = f['images'][i,:,:,:].T #image.transpose(2, 1, 0)
                 ra_depth = f['depths'][i,:,:].T #depth.transpose(1, 0)
@@ -224,7 +226,7 @@ if __name__ == '__main__':
         log("class_ids", class_ids)
         log("bbox", bbox)
         # Display image and instances
-        visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train)
+        visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train.class_names)
 
     if(command == 'train'):
 
