@@ -42,39 +42,40 @@ bottle,40,2
 wine glass,41,293
 cup,42,35
 fork,43,349
-spoon,44,283
-bowl,45,22
-banana,46,147
-apple,47,334
-sandwitch,48,246
-orange,49,709
-broccoli,50,-1
-carrot,51,-1
-hot dog,52,722
-pizza,53,247
-donut,54,-1
-cake,55,289
-chair,56,5
-couch,57,83
-potted plant,58,-1
-bed,59,157
-table,60,19
-toilet,61,124
-tv,62,172
-laptop,63,37
-mouse,64,103
-remote,65,175
-keyboard,66,47
-cell phone,67,290
-microwave,68,13
-oven,69,238
-toaster,70,251
-sink,71,24
-refrigerator,72,17
-book,73,1
-clock,74,56
-vase,75,78
-scissors,76,29
-teddy bear,77,-1
-hair dryer,78,577
-toothbrush,79,127
+knife,44,259
+spoon,45,283
+bowl,46,22
+banana,47,147
+apple,48,334
+sandwitch,49,246
+orange,50,709
+broccoli,51,-1
+carrot,52,-1
+hot dog,53,722
+pizza,54,247
+donut,55,-1
+cake,56,289
+chair,57,5
+couch,58,83
+potted plant,59,-1
+bed,60,157
+table,61,19
+toilet,62,124
+tv,63,172
+laptop,64,37
+mouse,65,103
+remote,66,175
+keyboard,67,47
+cell phone,68,290
+microwave,69,13
+oven,70,238
+toaster,71,251
+sink,72,24
+refrigerator,73,17
+book,74,1
+clock,75,56
+vase,76,78
+scissors,77,29
+teddy bear,78,-1
+hair dryer,79,577
+toothbrush,80,127
