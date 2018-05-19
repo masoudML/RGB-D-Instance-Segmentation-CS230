@@ -105,6 +105,8 @@ class NUYDataObject():
             return self.classes
 
         def NYUtoCOCOClassId(self, nyu_cls_id):
+            if nyu_cls_id == 0:
+                return 0
             ret = -1
             if nyu_cls_id in self.nyu_coco_map.keys():
                 ret = self.nyu_coco_map[nyu_cls_id]
