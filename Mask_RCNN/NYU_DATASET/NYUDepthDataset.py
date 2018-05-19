@@ -49,9 +49,9 @@ class NUYDataObject():
             train_data_size = int(self.dataset_size[0] * img_num)
             train_dataset = dict(zip(range(0, train_data_size), range(0, train_data_size)))
             dev_data_size = int(self.dataset_size[1] * img_num)
-            dev_dataset = dict(zip(range(train_data_size, train_data_size + dev_data_size), range(0, dev_data_size)))
+            dev_dataset = dict(zip(range(0, dev_data_size),range(train_data_size, train_data_size + dev_data_size) ))
             test_data_size = int(self.dataset_size[2] * img_num)
-            test_dataset = dict(zip(range(train_data_size + dev_data_size, img_num), range(0, test_data_size)))
+            test_dataset = dict(zip(range(0, test_data_size), range(train_data_size + dev_data_size, train_data_size + dev_data_size + test_data_size)))
 
             '''
             
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         model.load_weights(COCO_MODEL_PATH, by_name=True)
 
         print("Fine tune Resnet stage 4 and up")
-        model.train(nyu_ds_train, nyu_ds_dev,
+        model.train(nyu_ds_dev, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
                     epochs=10,
                     layers='4+',
