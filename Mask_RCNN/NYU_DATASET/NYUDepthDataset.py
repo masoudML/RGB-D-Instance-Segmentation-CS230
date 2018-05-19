@@ -253,7 +253,7 @@ if __name__ == '__main__':
         model.load_weights(COCO_MODEL_PATH, by_name=True)
 
         print("Fine tune Resnet stage 4 and up")
-        model.train(nyu_ds_dev, nyu_ds_dev,
+        model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
                     epochs=10,
                     layers='4+',
