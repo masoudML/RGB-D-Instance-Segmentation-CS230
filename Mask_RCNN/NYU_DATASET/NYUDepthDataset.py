@@ -168,7 +168,7 @@ class NYUDepthDataset(utils.Dataset):
 
 
     def load_image(self, image_id):
-        return self.nyu_do.load_image(image_id)
+        return self.nyu_do.load_image(image_id, self.type)
 
 
     def load_mask(self, image_id, ds='train'):
