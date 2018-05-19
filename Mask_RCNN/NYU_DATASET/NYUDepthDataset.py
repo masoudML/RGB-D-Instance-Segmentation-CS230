@@ -133,6 +133,8 @@ class NYUConfig(CocoConfig):
     # Give the configuration a recognizable name
     NAME = "NYUDepth"
 
+    STEPS_PER_EPOCH = 100
+
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
     IMAGES_PER_GPU = 2
