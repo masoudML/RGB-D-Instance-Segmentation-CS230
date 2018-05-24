@@ -133,11 +133,14 @@ class NYUConfig(CocoConfig):
     # Give the configuration a recognizable name
     NAME = "NYUDepth"
 
+    ## backbone
+    BACKBONE = "resnet50"
+
     STEPS_PER_EPOCH = 50
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 4
 
     # Uncomment to train on 8 GPUs (default is 1)
     # GPU_COUNT = 8
