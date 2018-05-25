@@ -29,12 +29,12 @@ NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [.8, .1, .1]
+            self.dataset_size = [.5, .1, .1]
             self.datasets = {}
             self.coco_nyu_class_map = pd.read_csv(COCO_NYU_CLASS_MAP_PATH)
             self.classes = dict(zip(self.coco_nyu_class_map.COCO_CLASS_ID, self.coco_nyu_class_map.CLASS_NAME))
             self.nyu_coco_map = dict(zip(self.coco_nyu_class_map.NYU_CLASS_ID, self.coco_nyu_class_map.COCO_CLASS_ID))
-
+            self.images_masks_map = {}
         def __str__(self):
             pass
 
@@ -53,9 +53,6 @@ class NUYDataObject():
             test_data_size = int(self.dataset_size[2] * img_num)
             test_dataset = dict(zip(range(0, test_data_size), range(train_data_size + dev_data_size, train_data_size + dev_data_size + test_data_size)))
 
-            '''
-            
-            
             for i, (image, depth) in enumerate(zip(f['images'], f['depths'])):
                 rgb_image = f['images'][i,:,:,:].T #image.transpose(2, 1, 0)
                 ra_depth = f['depths'][i,:,:].T #depth.transpose(1, 0)
@@ -68,14 +65,15 @@ class NUYDataObject():
                 # depth_name = os.path.join("data", "nyu_datasets", "%05d.png" % (i))
                 # depth_pil.save(depth_name)
                 image_dict = {"rgb": rgb_image, 'depth': depth_image, 'labels': image_labels}
-                if (i <= self.dataset_size[0]):
-                    train_dataset.append(image_dict)
-                elif (i > self.dataset_size[0] and i <= self.dataset_size[0] + self.dataset_size[1]):
-                    dev_dataset.append(image_dict)
-                else:
-                    test_dataset.append(image_dict)
+                self.images_masks_map[i] = image_dict
+               # if (i <= self.dataset_size[0]):
+               #     train_dataset.append(image_dict)
+               # elif (i > self.dataset_size[0] and i <= self.dataset_size[0] + self.dataset_size[1]):
+               #     dev_dataset.append(image_dict)
+               # else:
+               #     test_dataset.append(image_dict)
 
-            random.shuffle(train_dataset)
+            ''' random.shuffle(train_dataset)
             random.shuffle(dev_dataset)
             random.shuffle(test_dataset)'''
             self.datasets['train'] = train_dataset
@@ -87,6 +85,8 @@ class NUYDataObject():
         def load_image(self, image_id, dstype='train', imagetype='rgb'):
 
             img_id = self.datasets[dstype][image_id]
+            image = self.images_masks_map[img_id][imagetype]
+            '''
             f = h5py.File(NYU_DATASET_PATH, 'r')
             if imagetype == 'rgb':
                 image = f['images'][img_id, :, :, :].T  # image.transpose(2, 1, 0)
@@ -97,6 +97,7 @@ class NUYDataObject():
                 image = f['labels'][img_id, :, :].T
 
             f.close()
+            '''
             return image
 
 
@@ -140,7 +141,7 @@ class NYUConfig(CocoConfig):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 4
+    IMAGES_PER_GPU = 8
 
     # Uncomment to train on 8 GPUs (default is 1)
     # GPU_COUNT = 8
