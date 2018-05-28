@@ -143,18 +143,31 @@ class NYUConfig(CocoConfig):
 
     ## backbone
 
-    STEPS_PER_EPOCH = 1000
+    IMAGE_MIN_DIM = 128
+    IMAGE_MAX_DIM = 128
+
+    # Use smaller anchors because our image and objects are small
+    RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
+
+    # Reduce training ROIs per image because the images are small and have
+    # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
+    TRAIN_ROIS_PER_IMAGE = 32
+
+    # Use a small epoch since the data is simple
+    STEPS_PER_EPOCH = 100
+
+    # use small validation steps since the epoch is small
+    VALIDATION_STEPS = 5
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
     IMAGES_PER_GPU = 2
     LEARNING_RATE = 0.01
-    IMAGE_MAX_DIM = 256
     # Uncomment to train on 8 GPUs (default is 1)
     # GPU_COUNT = 8
-
     # Number of classes (including background)
     NUM_CLASSES = 1 + 80
+
 
 class NYU(COCO):
     def __init__(self, dataset):
