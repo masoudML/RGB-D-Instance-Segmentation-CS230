@@ -15,25 +15,32 @@ from mrcnn.model import log
 from mrcnn import model as modellib, utils
 import pandas as pd
 import imgaug
-
+import time
+from collections import defaultdict
 from mrcnn.config import Config
 from coco.coco import CocoConfig
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+from pycocotools import mask as maskUtils
+
 command = 'train'
 COCO_MODEL_PATH = os.path.join(PROJ_DIR, "mask_rcnn_coco.h5")
 COCO_NYU_CLASS_MAP_PATH = os.path.join(PROJ_DIR, "coco_nyu_classes_map.csv")
+coco_nyu_class_map = pd.read_csv(COCO_NYU_CLASS_MAP_PATH)
 
 # Directory to save logs and model checkpoints, if not provided
 DEFAULT_LOGS_DIR = os.path.join(PROJ_DIR, "logs")
 NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
 NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
+
+
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [.5, .1, .1]
+            self.dataset_size = [.5, .1, .01,]
             self.datasets = {}
-            self.coco_nyu_class_map = pd.read_csv(COCO_NYU_CLASS_MAP_PATH)
-            self.classes = dict(zip(self.coco_nyu_class_map.COCO_CLASS_ID, self.coco_nyu_class_map.CLASS_NAME))
-            self.nyu_coco_map = dict(zip(self.coco_nyu_class_map.NYU_CLASS_ID, self.coco_nyu_class_map.COCO_CLASS_ID))
+            self.classes = dict(zip(coco_nyu_class_map.COCO_CLASS_ID, coco_nyu_class_map.CLASS_NAME))
+            self.nyu_coco_map = dict(zip(coco_nyu_class_map.NYU_CLASS_ID, coco_nyu_class_map.COCO_CLASS_ID))
             self.images_masks_map = {}
         def __str__(self):
             pass
@@ -135,19 +142,29 @@ class NYUConfig(CocoConfig):
     NAME = "NYUDepth"
 
     ## backbone
-    BACKBONE = "resnet50"
 
-    STEPS_PER_EPOCH = 50
+    STEPS_PER_EPOCH = 1000
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 8
-
+    IMAGES_PER_GPU = 2
+    LEARNING_RATE = 0.01
+    IMAGE_MAX_DIM = 256
     # Uncomment to train on 8 GPUs (default is 1)
     # GPU_COUNT = 8
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 80
+
+class NYU(COCO):
+    def __init__(self, dataset):
+        super(NYU, self).__init__()
+
+        tic = time.time()
+        self.dataset = dataset.dataset_dict
+        self.createIndex()
+        print('Done (t={:0.2f}s)'.format(time.time() - tic))
+
 
 class NYUDepthDataset(utils.Dataset):
     def __init__(self, type='train'):
@@ -155,7 +172,7 @@ class NYUDepthDataset(utils.Dataset):
         self.type = type
         self.nyu_do = NUYDataObject()
 
-    def load_nyu_depth_v2(self, path):
+    def load_nyu_depth_v2(self, path, forEval=False):
         """Load the NYU dataset.
         """
         self.nyu_do.load_dataset(path)
@@ -165,6 +182,50 @@ class NYUDepthDataset(utils.Dataset):
         #df = pd.DataFrame.from_dict(list(classes.items()))
         #df.to_excel(writer,'sheet1')
        # writer.save()
+        if (forEval):
+            categories = []
+            annotations = []
+            images = []
+            for index, row in coco_nyu_class_map.iterrows():
+                category = {'supercategory': row['SUPERCATECORY'],
+                            'id': row['COCO_CLASS_ID'],
+                            'name': row['CLASS_NAME']
+                }
+                print(row)
+                categories.append(category)
+
+            i = 0
+            for k, v in self.nyu_do.datasets[self.type].items():
+                image_dict ={'id':k,
+                             'image_id':v}
+                images.append(image_dict)
+                image = self.load_image(k)
+                mask, class_ids = self.load_mask(k)
+                bbox = utils.extract_bboxes(mask)
+                j = 0
+                for c in class_ids:
+                    ann = {'id': i, # id
+                                'image_id': k, # image id in the dataset
+                                'bbox': bbox[j],
+                                'category_id':c,
+                                'iscrowd':0,
+                                'area' : 10000} # area is just not to ignore the ground truth box
+                    print(bbox[j])
+                    j += 1
+                    i += 1
+                    annotations.append(ann)
+
+                self.dataset_dict = {'annotations':annotations,
+                                    'images': images,
+                                    'categories': categories}
+                self.add_image("COCO", image_id=k, path=NYU_DATASET_PATH)
+
+            for k, v in classes.items():
+                self.add_class("COCO", k, v)
+
+            coco = NYU(self)
+            return coco
+
         for k, v in classes.items():
             self.add_class("NYU", k, v)
         for k in self.nyu_do.datasets[self.type].keys():
@@ -211,19 +272,87 @@ class NYUDepthDataset(utils.Dataset):
     def getClasses(self):
         return self.nyu_do.getClasses()
 
-def evaluate_model(model, dataset):
-    pass
+def build_coco_results(dataset, image_ids, rois, class_ids, scores, masks):
+    """Arrange resutls to match COCO specs in http://cocodataset.org/#format
+    """
+    # If no results, return an empty list
+    if rois is None:
+        return []
+
+    results = []
+    for image_id in image_ids:
+        # Loop through detections
+        for i in range(rois.shape[0]):
+            class_id = class_ids[i]
+            score = scores[i]
+            bbox = np.around(rois[i], 1)
+            mask = masks[:, :, i]
+
+            result = {
+                "image_id": image_id,
+                "category_id": class_id,
+                "bbox": [bbox[1], bbox[0], bbox[3] - bbox[1], bbox[2] - bbox[0]],
+                "score": score,
+                "segmentation": maskUtils.encode(np.asfortranarray(mask))
+            }
+            results.append(result)
+    return results
+
+
+def evaluate_model(model, dataset, nyu, eval_type="bbox", image_ids=None):
+    image_ids = image_ids or dataset.image_ids
+
+    # Get corresponding COCO image IDs.
+    coco_image_ids = [dataset.image_info[id]["id"] for id in image_ids]
+
+    t_prediction = 0
+    t_start = time.time()
+
+    results = []
+    for i, image_id in enumerate(image_ids):
+        # Load image
+        image = dataset.load_image(image_id)
+
+        # Run detection
+        t = time.time()
+        r = model.detect([image], verbose=0)[0]
+        t_prediction += (time.time() - t)
+
+        # Convert results to COCO format
+        # Cast masks to uint8 because COCO tools errors out on bool
+        image_results = build_coco_results(dataset, coco_image_ids[i:i + 1],
+                                           r["rois"], r["class_ids"],
+                                           r["scores"],
+                                           r["masks"].astype(np.uint8))
+        results.extend(image_results)
+        print(i)
+
+    # Load results. This modifies results with additional attributes.
+    nyu_results = nyu.loadRes(results)
+
+    # Evaluate
+    cocoEval = COCOeval(nyu, nyu_results, eval_type)
+    cocoEval.params.imgIds = coco_image_ids
+    cocoEval.evaluate()
+    cocoEval.accumulate()
+    cocoEval.summarize()
+
+    print("Prediction time: {}. Average {}/image".format(
+        t_prediction, t_prediction / len(image_ids)))
+    print("Total time: ", time.time() - t_start)
+
 
 if __name__ == '__main__':
 
     current_directory = os.getcwd()
+    config = NYUConfig()
     nyu_path = 'nyu_depth_v2_labeled.mat'
-    nyu_ds_train = NYUDepthDataset()
+    nyu_ds_train = NYUDepthDataset(type='test')
     nyu_ds_train.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
     nyu_ds_train.prepare()
     if (command == "data_inspect"):
         nyu_ds_train.prepare()
-        image_id = 257
+        image_id = 0
         image = nyu_ds_train.load_image(image_id)
         mask, class_ids = nyu_ds_train.load_mask(image_id)
 
@@ -241,7 +370,7 @@ if __name__ == '__main__':
 
     if(command == 'train'):
 
-        config = NYUConfig()
+
         nyu_ds_dev = NYUDepthDataset(type='dev')
         nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
         nyu_ds_dev.prepare()
@@ -261,10 +390,31 @@ if __name__ == '__main__':
                     learning_rate=config.LEARNING_RATE,
                     epochs=10,
                     layers='4+',
-                    augmentation=augmentation)
+                    augmentation=None)
 
-        # Validation dataset
-        dataset_val = NYUDepthDataset(type='dev')
-        dataset_val.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
-        dataset_val.prepare()
-        evaluate_model(model, dataset_val)
+        model.save_weights("model.h5")
+
+        # Evaluate Model
+    if (command == 'evaluate'):
+        class InferenceConfig(CocoConfig):
+            # Set batch size to 1 since we'll be running inference on
+            # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
+            GPU_COUNT = 1
+            IMAGES_PER_GPU = 1
+            DETECTION_MIN_CONFIDENCE = 0
+        config = InferenceConfig()
+        #config.BATCH_SIZE = 1
+        #config.GPU_COUNT = 1
+        #config.IMAGES_PER_GPU = 1
+        #config.DETECTION_MIN_CONFIDENCE = 0
+        config.display()
+        model = modellib.MaskRCNN(mode="inference", config=config,
+                                  model_dir=DEFAULT_LOGS_DIR)
+
+        print("Loading weights ", COCO_MODEL_PATH)
+        model.load_weights(COCO_MODEL_PATH, by_name=True)
+
+        dataset_test = NYUDepthDataset(type='test')
+        nyu = dataset_test.load_nyu_depth_v2('nyu_depth_v2_labeled.mat', forEval=True)
+        dataset_test.prepare()
+        evaluate_model(model, dataset_test,nyu)

@@ -1,81 +1,81 @@
-﻿CLASS_NAME,COCO_CLASS_ID,NYU_CLASS_ID
-person,1,331
-bicycle,2,189
-car,3,530
-motorcycle,4,-1
-airplane,5,-1
-bus,6,-1
-train,7,-1
-truck,8,391
-boat,9,789
-traffic light,10,-1
-fire hydrant,11,10
-stop sign,12,208
-parking meter,13,-1
-bench,14,204
-bird,15,-1
-cat,16,594
-dog,17,701
-horse,18,-1
-sheep,19,-1
-cow,20,-1
-elephant,21,-1
-bear,22,-1
-zebra,23,-1
-giraffe,24,-1
-backpack,25,206
-umbrella,26,203
-handbag,27,-1
-tie,28,315
-suitcase,29,199
-frisbee,30,-1
-skis,31,-1
-snowboard,32,-1
-sports ball,33,60
-kite,34,-1
-baseball,35,825
-baseball glove,36,729
-monitor,37,49
-picture,38,64
-tennis racket,39,626
-bottle,40,2
-wine glass,41,293
-cup,42,35
-fork,43,349
-knife,44,259
-spoon,45,283
-bowl,46,22
-banana,47,147
-apple,48,334
-sandwitch,49,246
-orange,50,709
-broccoli,51,-1
-carrot,52,-1
-hot dog,53,722
-pizza,54,247
-donut,55,-1
-cake,56,289
-chair,57,5
-couch,58,83
-potted plant,59,-1
-bed,60,157
-table,61,19
-toilet,62,124
-tv,63,172
-laptop,64,37
-mouse,65,103
-remote,66,175
-keyboard,67,47
-cell phone,68,290
-microwave,69,13
-oven,70,238
-toaster,71,251
-sink,72,24
-refrigerator,73,17
-book,74,1
-clock,75,56
-vase,76,78
-scissors,77,29
-teddy bear,78,-1
-hair dryer,79,577
-toothbrush,80,127
+﻿CLASS_NAME,COCO_CLASS_ID,NYU_CLASS_ID,ORIG_CLASS_ID,SUPERCATECORY
+person,1,331,1,person
+bicycle,2,189,2,Vehicle
+car,3,530,3,Vehicle
+motorcycle,4,-1,4,Vehicle
+airplane,5,-1,5,Vehicle
+bus,6,-1,6,Vehicle
+train,7,-1,7,Vehicle
+truck,8,391,8,Vehicle
+boat,9,789,9,Vehicle
+traffic light,10,-1,10,outdoor
+fire hydrant,11,10,11,outdoor
+stop sign,12,208,13,outdoor
+parking meter,13,-1,14,outdoor
+bench,14,204,15,outdoor
+bird,15,-1,16,animal
+cat,16,594,17,animal
+dog,17,701,18,animal
+horse,18,-1,19,animal
+sheep,19,-1,20,animal
+cow,20,-1,21,animal
+elephant,21,-1,22,animal
+bear,22,-1,23,animal
+zebra,23,-1,24,animal
+giraffe,24,-1,25,animal
+backpack,25,206,27,accessory
+umbrella,26,203,28,accessory
+handbag,27,-1,31,accessory
+tie,28,315,32,accessory
+suitcase,29,199,33,accessory
+frisbee,30,-1,34,sports
+skis,31,-1,35,sports
+snowboard,32,-1,36,sports
+sports ball,33,60,37,sports
+kite,34,-1,38,sports
+baseball,35,825,39,sports
+baseball glove,36,729,40,sports
+monitor,37,49,41,electronic
+picture,38,64,42,funiture
+tennis racket,39,626,43,sports
+bottle,40,2,44,kitchen
+wine glass,41,293,46,kitchen
+cup,42,35,47,kitchen
+fork,43,349,48,kitchen
+knife,44,259,49,kitchen
+spoon,45,283,50,kitchen
+bowl,46,22,51,kitchen
+banana,47,147,52,food
+apple,48,334,53,food
+sandwitch,49,246,54,food
+orange,50,709,55,food
+broccoli,51,-1,56,food
+carrot,52,-1,57,food
+hot dog,53,722,58,food
+pizza,54,247,59,food
+donut,55,-1,60,food
+cake,56,289,61,food
+chair,57,5,62,funiture
+couch,58,83,63,funiture
+potted plant,59,-1,64,funiture
+bed,60,157,65,funiture
+table,61,19,67,funiture
+toilet,62,124,70,funiture
+tv,63,172,72,electronic
+laptop,64,37,73,electronic
+mouse,65,103,74,electronic
+remote,66,175,75,electronic
+keyboard,67,47,76,electronic
+cell phone,68,290,77,electronic
+microwave,69,13,78,appliance
+oven,70,238,79,appliance
+toaster,71,251,80,appliance
+sink,72,24,81,appliance
+refrigerator,73,17,82,appliance
+book,74,1,84,indoor
+clock,75,56,85,indoor
+vase,76,78,86,indoor
+scissors,77,29,87,indoor
+teddy bear,78,-1,88,indoor
+hair dryer,79,577,89,indoor
+toothbrush,80,127,90,indoor
