@@ -13,9 +13,12 @@ sys.path.append(PROJ_DIR)  # To find local version of the library
 from mrcnn import visualize
 from mrcnn.model import log
 from mrcnn import model as modellib, utils
+from mrcnn import modeldepth as modellibDepth
+
 import pandas as pd
 import imgaug
 import time
+from skimage.color import gray2rgb
 from collections import defaultdict
 from mrcnn.config import Config
 from coco.coco import CocoConfig
@@ -143,10 +146,10 @@ class NYUConfig(CocoConfig):
 
     ## backbone
 
-    IMAGE_MIN_DIM = 128
-    IMAGE_MAX_DIM = 128
+    IMAGE_MIN_DIM = 256
+    IMAGE_MAX_DIM = 256
 
-    # Use smaller anchors because our image and objects are small
+
     RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
 
     # Reduce training ROIs per image because the images are small and have
@@ -248,6 +251,9 @@ class NYUDepthDataset(utils.Dataset):
     def load_image(self, image_id):
         return self.nyu_do.load_image(image_id, self.type)
 
+    def load_image_rgb_depth(self, image_id):
+        return (self.nyu_do.load_image(image_id, self.type, imagetype='rgb'), \
+                gray2rgb(self.nyu_do.load_image(image_id, self.type, imagetype='depth')))
 
     def load_mask(self, image_id, ds='train'):
         """Load instance masks for the given image.
@@ -357,13 +363,25 @@ def evaluate_model(model, dataset, nyu, eval_type="bbox", image_ids=None):
 
 if __name__ == '__main__':
 
-    current_directory = os.getcwd()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Train Mask R-CNN on NYU Dataset.')
+    parser.add_argument("command",
+                        metavar="<command>",
+                        help="'train','traindepth' , 'transfertrain', 'data_inspect' or 'evaluate' on NYU Dataset")
+
+    args = parser.parse_args()
+    print("Command: ", args.command)
+
+    # Configurations
+
     config = NYUConfig()
     nyu_path = 'nyu_depth_v2_labeled.mat'
-    nyu_ds_train = NYUDepthDataset(type='test')
+    nyu_ds_train = NYUDepthDataset(type='train')
     nyu_ds_train.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
     nyu_ds_train.prepare()
-    if (command == "data_inspect"):
+    if args.command == "data_inspect":
         nyu_ds_train.prepare()
         image_id = 0
         image = nyu_ds_train.load_image(image_id)
@@ -381,9 +399,7 @@ if __name__ == '__main__':
         # Display image and instances
         visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train.class_names)
 
-    if(command == 'train'):
-
-
+    if args.command == 'train':
         nyu_ds_dev = NYUDepthDataset(type='dev')
         nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
         nyu_ds_dev.prepare()
@@ -401,14 +417,35 @@ if __name__ == '__main__':
         print("Fine tune Resnet stage 4 and up")
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=10,
+                    epochs=1,
                     layers='4+',
                     augmentation=None)
 
-        model.save_weights("model.h5")
+       # model.save_weights("model.h5")
+
+    if args.command == "traindepth":
+
+        nyu_ds_dev = NYUDepthDataset(type='dev')
+        nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
+        nyu_ds_dev.prepare()
+
+        augmentation = imgaug.augmenters.Fliplr(0.5)
+        # Training - Stage 2
+        # Finetune layers from ResNet stage 4 and up
+        config.display()
+        model = modellibDepth.MaskRCNN(mode="training", config=config,
+                                  model_dir=DEFAULT_LOGS_DIR)
+
+        model.train(nyu_ds_train, nyu_ds_dev,
+                    learning_rate=config.LEARNING_RATE,
+                    epochs=10,
+                    layers='all',
+                    augmentation=None)
+
+        #model.save_weights("model.h5")
 
         # Evaluate Model
-    if (command == 'evaluate'):
+    if args.command == "evaluate":
         class InferenceConfig(CocoConfig):
             # Set batch size to 1 since we'll be running inference on
             # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
