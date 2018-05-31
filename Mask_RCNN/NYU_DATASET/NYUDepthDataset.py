@@ -26,7 +26,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from pycocotools import mask as maskUtils
 
-command = 'train'
+command = 'traindepth'
 COCO_MODEL_PATH = os.path.join(PROJ_DIR, "mask_rcnn_coco.h5")
 COCO_NYU_CLASS_MAP_PATH = os.path.join(PROJ_DIR, "coco_nyu_classes_map.csv")
 coco_nyu_class_map = pd.read_csv(COCO_NYU_CLASS_MAP_PATH)
@@ -146,8 +146,8 @@ class NYUConfig(CocoConfig):
 
     ## backbone
 
-    IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
+    IMAGE_MIN_DIM = 128
+    IMAGE_MAX_DIM = 128
 
 
     RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
