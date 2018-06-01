@@ -152,11 +152,20 @@ class NYUConfig(CocoConfig):
 
     VALIDATION_STEPS = 5
 
+    TRAIN_ROIS_PER_IMAGE = 64
+
     IMAGES_PER_GPU = 2
+
+    RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
 
     LEARNING_RATE = 0.01
     # Number of classes (including background)
     NUM_CLASSES = 1 + 80
+
+    RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
+
+
+
 
 
 class NYU(COCO):
