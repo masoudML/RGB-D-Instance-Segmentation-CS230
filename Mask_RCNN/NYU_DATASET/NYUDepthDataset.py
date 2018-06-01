@@ -37,8 +37,6 @@ NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
 NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
 SAVED_MODELS_DIR = os.path.join(PROJ_DIR, "models")
 
-
-
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
@@ -138,9 +136,9 @@ class NUYDataObject():
 
 
 class NYUConfig(CocoConfig):
-    """Configuration for training on MS COCO.
-    Derives from the base Config class and overrides values specific
-    to the COCO dataset.
+    """Configuration for training on NYU Dataset
+    Derives from the base COCO Config class and overrides values specific
+    to the NYU dataset.
     """
     # Give the configuration a recognizable name
     NAME = "NYUDepth"
@@ -150,25 +148,13 @@ class NYUConfig(CocoConfig):
     IMAGE_MIN_DIM = 256
     IMAGE_MAX_DIM = 256
 
-
-    RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
-
-    # Reduce training ROIs per image because the images are small and have
-    # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 32
-
-    # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 100
 
-    # use small validation steps since the epoch is small
     VALIDATION_STEPS = 5
 
-    # We use a GPU with 12GB memory, which can fit two images.
-    # Adjust down if you use a smaller GPU.
     IMAGES_PER_GPU = 2
+
     LEARNING_RATE = 0.01
-    # Uncomment to train on 8 GPUs (default is 1)
-    # GPU_COUNT = 8
     # Number of classes (including background)
     NUM_CLASSES = 1 + 80
 
@@ -371,7 +357,7 @@ if __name__ == '__main__':
     parser.add_argument("command",
                         metavar="<command>",
                         help="'train','traindepth' , 'transfertrain', 'data_inspect' or 'evaluate' on NYU Dataset")
-    parser.add_argument('--model', required=True,
+    parser.add_argument('--model', required=False,
                         metavar="/path/to/weights.h5",
                         help="Path to weights .h5 file")
 
@@ -426,8 +412,6 @@ if __name__ == '__main__':
                     layers='all',
                     augmentation=None)
 
-       # model.save_weights("model.h5")
-
     if args.command == "traindepth":
 
         nyu_ds_dev = NYUDepthDataset(type='dev')
@@ -461,10 +445,6 @@ if __name__ == '__main__':
             IMAGES_PER_GPU = 1
             DETECTION_MIN_CONFIDENCE = 0
         config = InferenceConfig()
-        #config.BATCH_SIZE = 1
-        #config.GPU_COUNT = 1
-        #config.IMAGES_PER_GPU = 1
-        #config.DETECTION_MIN_CONFIDENCE = 0
         config.display()
         model = modellib.MaskRCNN(mode="inference", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
