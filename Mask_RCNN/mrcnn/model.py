@@ -1208,6 +1208,9 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
     # Load image and mask
     image = dataset.load_image(image_id)
     mask, class_ids = dataset.load_mask(image_id)
+    if class_ids.size == 0:
+        return image, None, class_ids, None, None
+
     original_shape = image.shape
     image, window, scale, padding, crop = utils.resize_image(
         image,
@@ -1624,6 +1627,7 @@ def generate_random_rois(image_shape, count, gt_class_ids, gt_boxes):
     global_rois = np.hstack([y1, x1, y2, x2])
     rois[-remaining_count:] = global_rois
     return rois
+
 
 
 def data_generator(dataset, config, shuffle=True, augment=False, augmentation=None,
@@ -2067,6 +2071,11 @@ class MaskRCNN():
             return dir_name, None
         checkpoint = os.path.join(dir_name, checkpoints[-1])
         return dir_name, checkpoint
+
+    def save_weights(self, filepath, name):
+        self.keras_model.save_weights(filepath=filepath, overwrite=True)
+    def load_weights_keras(self, filepath):
+        self.keras_model.load_weights(filepath)
 
     def load_weights(self, filepath, by_name=False, exclude=None):
         """Modified version of the correspoding Keras function with
