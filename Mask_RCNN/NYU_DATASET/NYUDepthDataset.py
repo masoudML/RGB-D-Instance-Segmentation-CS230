@@ -35,12 +35,14 @@ coco_nyu_class_map = pd.read_csv(COCO_NYU_CLASS_MAP_PATH)
 DEFAULT_LOGS_DIR = os.path.join(PROJ_DIR, "logs")
 NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
 NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
+SAVED_MODELS_DIR = os.path.join(PROJ_DIR, "models")
+
 
 
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [.5, .1, .01,]
+            self.dataset_size = [.5, .1, .1,]
             self.datasets = {}
             self.classes = dict(zip(coco_nyu_class_map.COCO_CLASS_ID, coco_nyu_class_map.CLASS_NAME))
             self.nyu_coco_map = dict(zip(coco_nyu_class_map.NYU_CLASS_ID, coco_nyu_class_map.COCO_CLASS_ID))
@@ -49,19 +51,21 @@ class NUYDataObject():
             pass
 
         def load_dataset(self, path):
-            print("load dataset: %s" % (NYU_DATASET_PATH))
             if ('train' in self.datasets.keys()):
                 return
 
+            print("load dataset: %s" % (NYU_DATASET_PATH))
             f = h5py.File(NYU_DATASET_PATH, 'r')
 
             img_num = len(f['images'])
+            img_nums = np.arange(img_num)
+            random.shuffle(img_nums)
             train_data_size = int(self.dataset_size[0] * img_num)
-            train_dataset = dict(zip(range(0, train_data_size), range(0, train_data_size)))
+            train_dataset = dict(zip(range(0, train_data_size), img_nums[0:train_data_size]))
             dev_data_size = int(self.dataset_size[1] * img_num)
-            dev_dataset = dict(zip(range(0, dev_data_size),range(train_data_size, train_data_size + dev_data_size) ))
+            dev_dataset = dict(zip(range(0, dev_data_size),img_nums[train_data_size:(train_data_size + dev_data_size)] ))
             test_data_size = int(self.dataset_size[2] * img_num)
-            test_dataset = dict(zip(range(0, test_data_size), range(train_data_size + dev_data_size, train_data_size + dev_data_size + test_data_size)))
+            test_dataset = dict(zip(range(0, test_data_size), img_nums[(train_data_size + dev_data_size): (train_data_size + dev_data_size + test_data_size)]))
 
             for i, (image, depth) in enumerate(zip(f['images'], f['depths'])):
                 rgb_image = f['images'][i,:,:,:].T #image.transpose(2, 1, 0)
@@ -83,9 +87,6 @@ class NUYDataObject():
                # else:
                #     test_dataset.append(image_dict)
 
-            ''' random.shuffle(train_dataset)
-            random.shuffle(dev_dataset)
-            random.shuffle(test_dataset)'''
             self.datasets['train'] = train_dataset
             self.datasets['dev'] = dev_dataset
             self.datasets['test'] = test_dataset
@@ -146,8 +147,8 @@ class NYUConfig(CocoConfig):
 
     ## backbone
 
-    IMAGE_MIN_DIM = 128
-    IMAGE_MAX_DIM = 128
+    IMAGE_MIN_DIM = 256
+    IMAGE_MAX_DIM = 256
 
 
     RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
@@ -370,10 +371,13 @@ if __name__ == '__main__':
     parser.add_argument("command",
                         metavar="<command>",
                         help="'train','traindepth' , 'transfertrain', 'data_inspect' or 'evaluate' on NYU Dataset")
+    parser.add_argument('--model', required=True,
+                        metavar="/path/to/weights.h5",
+                        help="Path to weights .h5 file")
 
     args = parser.parse_args()
     print("Command: ", args.command)
-
+    print("Model: ", args.model)
     # Configurations
 
     config = NYUConfig()
@@ -411,14 +415,15 @@ if __name__ == '__main__':
         model = modellib.MaskRCNN(mode="training", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
 
-        print("Loading weights ", COCO_MODEL_PATH)
-        model.load_weights(COCO_MODEL_PATH, by_name=True)
-
-        print("Fine tune Resnet stage 4 and up")
+      #  print("Loading weights ", COCO_MODEL_PATH)
+      #  model.load_weights(COCO_MODEL_PATH, by_name=True)
+        if args.model:
+            print("Loading weights ", DEFAULT_LOGS_DIR + '/' + args.model)
+            model.load_weights(DEFAULT_LOGS_DIR+'/'+args.model, by_name=True)
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=1,
-                    layers='4+',
+                    epochs=10,
+                    layers='all',
                     augmentation=None)
 
        # model.save_weights("model.h5")
@@ -436,17 +441,20 @@ if __name__ == '__main__':
         model = modellibDepth.MaskRCNN(mode="training", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
 
+        if args.model:
+            print("Loading weights ", DEFAULT_LOGS_DIR + '/' + args.model)
+            model.load_weights(DEFAULT_LOGS_DIR+'/'+args.model, by_name=True)
+
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
                     epochs=10,
                     layers='all',
                     augmentation=None)
 
-        #model.save_weights("model.h5")
 
         # Evaluate Model
     if args.command == "evaluate":
-        class InferenceConfig(CocoConfig):
+        class InferenceConfig(NYUConfig):
             # Set batch size to 1 since we'll be running inference on
             # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
             GPU_COUNT = 1
@@ -461,8 +469,9 @@ if __name__ == '__main__':
         model = modellib.MaskRCNN(mode="inference", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
 
-        print("Loading weights ", COCO_MODEL_PATH)
-        model.load_weights(COCO_MODEL_PATH, by_name=True)
+        if args.model:
+            print("Loading weights ", DEFAULT_LOGS_DIR+'/'+args.model)
+            model.load_weights(DEFAULT_LOGS_DIR+'/'+args.model, by_name=True)
 
         dataset_test = NYUDepthDataset(type='test')
         nyu = dataset_test.load_nyu_depth_v2('nyu_depth_v2_labeled.mat', forEval=True)
