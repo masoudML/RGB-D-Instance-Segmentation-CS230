@@ -408,7 +408,7 @@ if __name__ == '__main__':
             model.load_weights(DEFAULT_LOGS_DIR+'/'+args.model, by_name=True)
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=10,
+                    epochs=20,
                     layers='all',
                     augmentation=None)
 
@@ -431,7 +431,7 @@ if __name__ == '__main__':
 
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=10,
+                    epochs=20,
                     layers='all',
                     augmentation=None)
 
