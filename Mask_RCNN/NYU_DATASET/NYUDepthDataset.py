@@ -46,7 +46,7 @@ learning_rate = 0.01
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [.8, .1, .1,]
+            self.dataset_size = [.8, .1, .01]
             self.datasets = {}
             self.classes = dict(zip(coco_nyu_class_map.COCO_CLASS_ID, coco_nyu_class_map.CLASS_NAME))
             self.nyu_coco_map = dict(zip(coco_nyu_class_map.NYU_CLASS_ID, coco_nyu_class_map.COCO_CLASS_ID))
@@ -260,10 +260,12 @@ def evaluate_model():
         #                            dataset_test.class_names, r['scores'], ax=ax,
        #                             title="Predictions")
 
-        AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
+        try:
+            AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
                                                          r['rois'], r['class_ids'], r['scores'], r['masks'])
-
-        APs.append(AP)
+            APs.append(AP)
+        except:
+            print('GT classes in the image are not covered')
 
         #print(AP)
         #print(precisions)
