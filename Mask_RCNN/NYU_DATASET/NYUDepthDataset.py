@@ -264,6 +264,7 @@ def evaluate_model():
             AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
                                                          r['rois'], r['class_ids'], r['scores'], r['masks'])
             APs.append(AP)
+            print('Image %d AP = : %f' % (image_id, AP))
         except:
             print('GT classes in the image are not covered')
 
