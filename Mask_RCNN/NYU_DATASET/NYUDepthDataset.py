@@ -46,7 +46,7 @@ learning_rate = 0.01
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [.8, .1, .01]
+            self.dataset_size = [.8, .1, .1]
             self.datasets = {}
             self.classes = dict(zip(coco_nyu_class_map.COCO_CLASS_ID, coco_nyu_class_map.CLASS_NAME))
             self.nyu_coco_map = dict(zip(coco_nyu_class_map.NYU_CLASS_ID, coco_nyu_class_map.COCO_CLASS_ID))
