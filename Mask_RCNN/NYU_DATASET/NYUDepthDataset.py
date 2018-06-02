@@ -37,10 +37,16 @@ NYU_DATASET_DIR = os.path.join(PROJ_DIR, "NYU_DATASET")
 NYU_DATASET_PATH = NYU_DATASET_DIR+'/nyu_depth_v2_labeled.mat'
 SAVED_MODELS_DIR = os.path.join(PROJ_DIR, "models")
 
+# defaults
+stages = 'all' # training stages/layers
+epochs = 20  # number of training epochs
+augmentation = None # no augmentation
+learning_rate = 0.01
+
 class NUYDataObject():
     class __NUYDataObject:
         def __init__(self):
-            self.dataset_size = [.5, .1, .1,]
+            self.dataset_size = [.8, .1, .1,]
             self.datasets = {}
             self.classes = dict(zip(coco_nyu_class_map.COCO_CLASS_ID, coco_nyu_class_map.CLASS_NAME))
             self.nyu_coco_map = dict(zip(coco_nyu_class_map.NYU_CLASS_ID, coco_nyu_class_map.COCO_CLASS_ID))
@@ -135,35 +141,6 @@ class NUYDataObject():
         return setattr(self.instance, name)
 
 
-class NYUConfig(CocoConfig):
-    """Configuration for training on NYU Dataset
-    Derives from the base COCO Config class and overrides values specific
-    to the NYU dataset.
-    """
-    # Give the configuration a recognizable name
-    NAME = "NYUDepth"
-
-    ## backbone
-
-    IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
-
-    STEPS_PER_EPOCH = 100
-
-    VALIDATION_STEPS = 5
-
-    TRAIN_ROIS_PER_IMAGE = 100
-
-    IMAGES_PER_GPU = 2
-
-    RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
-
-    LEARNING_RATE = 0.01
-    # Number of classes (including background)
-    NUM_CLASSES = 1 + 80
-
-
-
 class NYU(COCO):
     def __init__(self, dataset):
         super(NYU, self).__init__()
@@ -185,54 +162,6 @@ class NYUDepthDataset(utils.Dataset):
         """
         self.nyu_do.load_dataset(path)
         classes = self.nyu_do.getClasses()
-        #import pandas as pd
-        #writer = pd.ExcelWriter('nyu_classes.xlsx')
-        #df = pd.DataFrame.from_dict(list(classes.items()))
-        #df.to_excel(writer,'sheet1')
-       # writer.save()
-        if (forEval):
-            categories = []
-            annotations = []
-            images = []
-            for index, row in coco_nyu_class_map.iterrows():
-                category = {'supercategory': row['SUPERCATECORY'],
-                            'id': row['COCO_CLASS_ID'],
-                            'name': row['CLASS_NAME']
-                }
-                print(row)
-                categories.append(category)
-
-            i = 0
-            for k, v in self.nyu_do.datasets[self.type].items():
-                image_dict ={'id':k,
-                             'image_id':v}
-                images.append(image_dict)
-                image = self.load_image(k)
-                mask, class_ids = self.load_mask(k)
-                bbox = utils.extract_bboxes(mask)
-                j = 0
-                for c in class_ids:
-                    ann = {'id': i, # id
-                                'image_id': k, # image id in the dataset
-                                'bbox': bbox[j],
-                                'category_id':c,
-                                'iscrowd':0,
-                                'area' : 10000} # area is just not to ignore the ground truth box
-                    print(bbox[j])
-                    j += 1
-                    i += 1
-                    annotations.append(ann)
-
-                self.dataset_dict = {'annotations':annotations,
-                                    'images': images,
-                                    'categories': categories}
-                self.add_image("COCO", image_id=k, path=NYU_DATASET_PATH)
-
-            for k, v in classes.items():
-                self.add_class("COCO", k, v)
-
-            coco = NYU(self)
-            return coco
 
         for k, v in classes.items():
             self.add_class("NYU", k, v)
@@ -285,76 +214,6 @@ class NYUDepthDataset(utils.Dataset):
     def getClasses(self):
         return self.nyu_do.getClasses()
 
-def build_coco_results(dataset, image_ids, rois, class_ids, scores, masks):
-    """Arrange resutls to match COCO specs in http://cocodataset.org/#format
-    """
-    # If no results, return an empty list
-    if rois is None:
-        return []
-
-    results = []
-    for image_id in image_ids:
-        # Loop through detections
-        for i in range(rois.shape[0]):
-            class_id = class_ids[i]
-            score = scores[i]
-            bbox = np.around(rois[i], 1)
-            mask = masks[:, :, i]
-
-            result = {
-                "image_id": image_id,
-                "category_id": class_id,
-                "bbox": [bbox[1], bbox[0], bbox[3] - bbox[1], bbox[2] - bbox[0]],
-                "score": score,
-                "segmentation": maskUtils.encode(np.asfortranarray(mask))
-            }
-            results.append(result)
-    return results
-
-
-def evaluate_model(model, dataset, nyu, eval_type="bbox", image_ids=None):
-    image_ids = image_ids or dataset.image_ids
-
-    # Get corresponding COCO image IDs.
-    coco_image_ids = [dataset.image_info[id]["id"] for id in image_ids]
-
-    t_prediction = 0
-    t_start = time.time()
-
-    results = []
-    for i, image_id in enumerate(image_ids):
-        # Load image
-        image = dataset.load_image(image_id)
-
-        # Run detection
-        t = time.time()
-        r = model.detect([image], verbose=0)[0]
-        t_prediction += (time.time() - t)
-
-        # Convert results to COCO format
-        # Cast masks to uint8 because COCO tools errors out on bool
-        image_results = build_coco_results(dataset, coco_image_ids[i:i + 1],
-                                           r["rois"], r["class_ids"],
-                                           r["scores"],
-                                           r["masks"].astype(np.uint8))
-        results.extend(image_results)
-        print(i)
-
-    # Load results. This modifies results with additional attributes.
-    nyu_results = nyu.loadRes(results)
-
-    # Evaluate
-    cocoEval = COCOeval(nyu, nyu_results, eval_type)
-    cocoEval.params.imgIds = coco_image_ids
-    cocoEval.evaluate()
-    cocoEval.accumulate()
-    cocoEval.summarize()
-
-    print("Prediction time: {}. Average {}/image".format(
-        t_prediction, t_prediction / len(image_ids)))
-    print("Total time: ", time.time() - t_start)
-
-
 def get_ax(rows=1, cols=1, size=16):
     import matplotlib.pyplot as plt
     """Return a Matplotlib Axes array to be used in
@@ -365,6 +224,53 @@ def get_ax(rows=1, cols=1, size=16):
     """
     _, ax = plt.subplots(rows, cols, figsize=(size * cols, size * rows))
     return ax
+
+def evaluate_model():
+
+    model = modellib.MaskRCNN(mode="inference", config=config,
+                              model_dir=DEFAULT_LOGS_DIR)
+
+    if args.model:
+        print("Loading weights ", DEFAULT_LOGS_DIR + '/' + args.model)
+        model.load_weights(DEFAULT_LOGS_DIR + '/' + args.model, by_name=True)
+
+    dataset_test = NYUDepthDataset(type='test')
+    nyu = dataset_test.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
+    dataset_test.prepare()
+    mAP = 0
+    APs = []
+    #image_id = random.choice(dataset_test.image_ids)
+    for image_id in dataset_test.image_ids:
+        image, image_meta, gt_class_id, gt_bbox, gt_mask = \
+            modellib.load_image_gt(dataset_test, config, image_id, use_mini_mask=False)
+        info = dataset_test.image_info[image_id]
+        print("image ID: {}.{} ({}) {}".format(info["source"], info["id"], image_id,
+                                               dataset_test.image_reference(image_id)))
+        # Run object detection
+        results = model.detect([image], verbose=1)
+
+        # Display results
+        ax = get_ax(1)
+        r = results[0]
+
+       # visualize.display_instances(image, gt_bbox, gt_mask, gt_class_id, dataset_test.class_names,
+       #                             title='NYU Ground Truth')
+
+       # visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
+        #                            dataset_test.class_names, r['scores'], ax=ax,
+       #                             title="Predictions")
+
+        AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
+                                                         r['rois'], r['class_ids'], r['scores'], r['masks'])
+
+        APs.append(AP)
+
+        #print(AP)
+        #print(precisions)
+        #print(recalls)
+        #print(overlaps)
+    mAP = np.mean(np.array(APs))
+    print(mAP)
 
 if __name__ == '__main__':
 
@@ -384,6 +290,26 @@ if __name__ == '__main__':
     parser.add_argument('--backbone', required=False,
                         metavar="backbone",
                         help="Backbone (resnet101, resnet50) ")
+    parser.add_argument('--LR', required=False,
+                        metavar="Learning Rate",
+                        help="Learning Rate")
+    parser.add_argument('--augment', required=False,
+                        metavar="augmentation",
+                        help="augmentation (True/False)")
+    parser.add_argument('--early', required=False,
+                        metavar="earlystopping",
+                        help="Early Stopping (True/False)")
+    parser.add_argument('--epochs', required=False,
+                        metavar="epochs",
+                        help="Number of Epochs")
+    parser.add_argument('--trainstages', required=False,
+                        metavar="TrainStages",
+                        help="stages to train")
+
+
+    parser.add_argument('--eval', required=False,
+                        metavar="Evaluate",
+                        help="Evaluate Model")
 
     args = parser.parse_args()
     print("Command: ", args.command)
@@ -391,18 +317,73 @@ if __name__ == '__main__':
     print("backbone: ", args.backbone)
     print("image config size: ", args.imgsize)
     # Configurations
+   # config_IMAGE_MAX_DIM = CocoConfig.IMAGE_MAX_DIM
+   # config_RPN_ANCHOR_SCALES = CocoConfig.RPN_ANCHOR_SCALES
+   # config_BACKBONE = CocoConfig.BACKBONE
+    #config_LEARNING_RATE = CocoConfig.LEARNING_RATE
+
+    #if (args.imgsize):
+    #    img_size = int(args.imgsize)
+    #    config_IMAGE_MAX_DIM = img_size
+    #    if (img_size < 512):
+    #        config_RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
+
+   # if (args.backbone):
+    #    config_BACKBONE = args.backbone
+   # if (args.LR):
+    #    config_LEARNING_RATE = int(args.LR)
+
+    if (args.LR):
+        learning_rate = float(args.LR)
+
+    class NYUConfig(CocoConfig):
+        """Configuration for training on NYU Dataset
+        Derives from the base COCO Config class and overrides values specific
+        to the NYU dataset.
+        """
+        # Give the configuration a recognizable name
+        NAME = "NYUDepth"
+
+        if (args.backbone):
+            BACKBONE = args.backbone
+
+        if (args.imgsize):
+            img_size = int(args.imgsize)
+            IMAGE_MAX_DIM = IMAGE_MIN_DIM = img_size
+            if (img_size < 512):
+                RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
+
+        if (args.command == 'evaluate'):
+            GPU_COUNT = 1
+            IMAGES_PER_GPU = 1
+            DETECTION_MIN_CONFIDENCE = 0
+
+        LEARNING_RATE = learning_rate
+
+        STEPS_PER_EPOCH = 100
+        VALIDATION_STEPS = 10
+        TRAIN_ROIS_PER_IMAGE = 100
+
 
     config = NYUConfig()
-    if(args.imgsize):
-        config.IMAGE_MAX_DIM = config.IMAGE_MIN_DIM = int(args.imgsize)
-        config.IMAGE_SHAPE = np.array([config.IMAGE_MAX_DIM, config.IMAGE_MAX_DIM, 3])
-    if (args.backbone):
-        config.BACKBONE = args.backbone
+    config.display()
+
+    if (args.augment):
+        augmentation = imgaug.augmenters.Fliplr(0.5)
+    if(args.trainstages):
+        stages = args.trainstages
+    if(args.epochs):
+        epochs = int(epochs)
 
     nyu_path = 'nyu_depth_v2_labeled.mat'
     nyu_ds_train = NYUDepthDataset(type='train')
     nyu_ds_train.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
     nyu_ds_train.prepare()
+    nyu_ds_dev = NYUDepthDataset(type='dev')
+    nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
+    nyu_ds_dev.prepare()
+
+
     if args.command == "data_inspect":
         nyu_ds_train.prepare()
         image_id = 0
@@ -422,14 +403,6 @@ if __name__ == '__main__':
         visualize.display_instances(image, bbox, mask, class_ids, nyu_ds_train.class_names)
 
     if args.command == 'traintransfer':
-        nyu_ds_dev = NYUDepthDataset(type='dev')
-        nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
-        nyu_ds_dev.prepare()
-
-        augmentation = imgaug.augmenters.Fliplr(0.5)
-        # Training - Stage 2
-        # Finetune layers from ResNet stage 4 and up
-        config.display()
         model = modellib.MaskRCNN(mode="training", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
 
@@ -437,43 +410,31 @@ if __name__ == '__main__':
         model.load_weights(COCO_MODEL_PATH, by_name=True)
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=20,
-                    layers='all',
-                    augmentation=None)
+                    epochs=epochs,
+                    layers=stages,
+                    augmentation=augmentation)
+
+        #if(args.eval):
+        #    evaluate_model()
 
     if args.command == 'train':
-        nyu_ds_dev = NYUDepthDataset(type='dev')
-        nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
-        nyu_ds_dev.prepare()
-
-        augmentation = imgaug.augmenters.Fliplr(0.5)
-        # Training - Stage 2
-        # Finetune layers from ResNet stage 4 and up
-        config.display()
         model = modellib.MaskRCNN(mode="training", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
 
-      #  print("Loading weights ", COCO_MODEL_PATH)
-      #  model.load_weights(COCO_MODEL_PATH, by_name=True)
         if args.model:
             print("Loading weights ", DEFAULT_LOGS_DIR + '/' + args.model)
             model.load_weights(DEFAULT_LOGS_DIR+'/'+args.model, by_name=True)
+
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=20,
-                    layers='all',
-                    augmentation=None)
+                    epochs=epochs,
+                    layers=stages,
+                    augmentation=augmentation)
+
+       # if (args.eval):
+        #    evaluate_model()
 
     if args.command == "traindepth":
-
-        nyu_ds_dev = NYUDepthDataset(type='dev')
-        nyu_ds_dev.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')
-        nyu_ds_dev.prepare()
-
-        augmentation = imgaug.augmenters.Fliplr(0.5)
-        # Training - Stage 2
-        # Finetune layers from ResNet stage 4 and up
-        config.display()
         model = modellibDepth.MaskRCNN(mode="training", config=config,
                                   model_dir=DEFAULT_LOGS_DIR)
 
@@ -483,51 +444,13 @@ if __name__ == '__main__':
 
         model.train(nyu_ds_train, nyu_ds_dev,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=20,
-                    layers='all',
-                    augmentation=None)
+                    epochs=epochs,
+                    layers=stages,
+                    augmentation=augmentation)
 
+        #if (args.eval):
+        #    evaluate_model()
 
-        # Evaluate Model
+    # Evaluate Model
     if args.command == "evaluate":
-        class InferenceConfig(NYUConfig):
-            # Set batch size to 1 since we'll be running inference on
-            # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
-            GPU_COUNT = 1
-            IMAGES_PER_GPU = 1
-            DETECTION_MIN_CONFIDENCE = 0
-        config = InferenceConfig()
-        config.display()
-        model = modellib.MaskRCNN(mode="inference", config=config,
-                                  model_dir=DEFAULT_LOGS_DIR)
-
-        if args.model:
-            print("Loading weights ", DEFAULT_LOGS_DIR+'/'+args.model)
-            model.load_weights(DEFAULT_LOGS_DIR+'/'+args.model, by_name=True)
-
-        dataset_test = NYUDepthDataset(type='test')
-        nyu = dataset_test.load_nyu_depth_v2('nyu_depth_v2_labeled.mat')#, forEval=True)
-        dataset_test.prepare()
-
-        image_id = random.choice(dataset_test.image_ids)
-        image, image_meta, gt_class_id, gt_bbox, gt_mask = \
-            modellib.load_image_gt(dataset_test, config, image_id, use_mini_mask=False)
-        info = dataset_test.image_info[image_id]
-        print("image ID: {}.{} ({}) {}".format(info["source"], info["id"], image_id,
-                                               dataset_test.image_reference(image_id)))
-        # Run object detection
-        results = model.detect([image], verbose=1)
-
-        # Display results
-        ax = get_ax(1)
-        r = results[0]
-        visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-                                    dataset_test.class_names, r['scores'], ax=ax,
-                                    title="Predictions")
-        #visualize.display_instances(image, gt_bbox, gt_mask, gt_class_id, dataset_test.class_names)
-
-        log("gt_class_id", gt_class_id)
-        log("gt_bbox", gt_bbox)
-        log("gt_mask", gt_mask)
-
-        #evaluate_model(model, dataset_test,nyu)
+        evaluate_model()
