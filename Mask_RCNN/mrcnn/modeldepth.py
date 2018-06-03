@@ -1330,6 +1330,9 @@ def load_images_gt(dataset, config, image_id, augment=False, augmentation=None,
     # Load image and mask
     image, depth_image = dataset.load_image_rgb_depth(image_id)
     mask, class_ids = dataset.load_mask(image_id)
+    if class_ids.size == 0:
+        return image, depth_image, None, class_ids, None, None
+
     original_shape = image.shape
     image, window, scale, padding, crop = utils.resize_image(
         image,
