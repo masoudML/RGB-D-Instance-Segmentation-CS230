@@ -41,7 +41,11 @@ SAVED_MODELS_DIR = os.path.join(PROJ_DIR, "models")
 stages = 'all' # training stages/layers
 epochs = 20  # number of training epochs
 augmentation = None # no augmentation
-learning_rate = 0.01
+learning_rate = 0.001
+
+# AP Threshold
+AP_THRESHOLD  = 0.0001
+IOU_THRESHOLD = 0.5
 
 class NUYDataObject():
     class __NUYDataObject:
@@ -100,6 +104,7 @@ class NUYDataObject():
         def load_image(self, image_id, dstype='train', imagetype='rgb'):
 
             img_id = self.datasets[dstype][image_id]
+            ## img_id = 1185 ## remove
             image = self.images_masks_map[img_id][imagetype]
             '''
             f = h5py.File(NYU_DATASET_PATH, 'r')
@@ -225,9 +230,14 @@ def get_ax(rows=1, cols=1, size=16):
     _, ax = plt.subplots(rows, cols, figsize=(size * cols, size * rows))
     return ax
 
-def evaluate_model():
+def evaluate_model(type='RGB'):
 
-    model = modellib.MaskRCNN(mode="inference", config=config,
+    if(type=='RGB'):
+        modlib = modellib
+    else:
+        modlib = modellibDepth
+
+    model = modlib.MaskRCNN(mode="inference", config=config,
                               model_dir=DEFAULT_LOGS_DIR)
 
     if args.model:
@@ -241,37 +251,43 @@ def evaluate_model():
     APs = []
     #image_id = random.choice(dataset_test.image_ids)
     for image_id in dataset_test.image_ids:
-        image, image_meta, gt_class_id, gt_bbox, gt_mask = \
-            modellib.load_image_gt(dataset_test, config, image_id, use_mini_mask=False)
+        if(type=='RGB'):
+            image, image_meta, gt_class_id, gt_bbox, gt_mask = \
+                modlib.load_image_gt(dataset_test, config, image_id, use_mini_mask=False)
+        else:
+            image, depthimage, image_meta, gt_class_id, gt_bbox, gt_mask = \
+                modlib.load_images_gt(dataset_test, config, image_id, use_mini_mask=False)
+
         info = dataset_test.image_info[image_id]
         print("image ID: {}.{} ({}) {}".format(info["source"], info["id"], image_id,
                                                dataset_test.image_reference(image_id)))
         # Run object detection
-        results = model.detect([image], verbose=1)
-
+        if(type=='RGB'):
+            results = model.detect([image])
+        else:
+            results = model.detectWdepth([image],[depthimage])
         # Display results
-        ax = get_ax(1)
+
         r = results[0]
 
        # visualize.display_instances(image, gt_bbox, gt_mask, gt_class_id, dataset_test.class_names,
        #                             title='NYU Ground Truth')
 
+       # ax = get_ax(1)
        # visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
         #                            dataset_test.class_names, r['scores'], ax=ax,
        #                             title="Predictions")
 
         try:
             AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
-                                                         r['rois'], r['class_ids'], r['scores'], r['masks'])
-            APs.append(AP)
-            print('Image %d AP = : %f' % (image_id, AP))
+                                                         r['rois'], r['class_ids'], r['scores'], r['masks'], iou_threshold=IOU_THRESHOLD)
+            if(AP > AP_THRESHOLD):
+                print(AP)
+                APs.append(AP)
+                print('Image %d AP = : %f' % (image_id, AP))
         except:
             print('GT classes in the image are not covered')
 
-        #print(AP)
-        #print(precisions)
-        #print(recalls)
-        #print(overlaps)
     mAP = np.mean(np.array(APs))
     print(mAP)
 
@@ -309,6 +325,10 @@ if __name__ == '__main__':
                         metavar="TrainStages",
                         help="stages to train")
 
+    parser.add_argument('--lmbda', required=False,
+                        metavar="Regularization Parameter (Lmdba)",
+                        help="Regularization Parameter (Lmdba)")
+
 
     parser.add_argument('--eval', required=False,
                         metavar="Evaluate",
@@ -319,25 +339,7 @@ if __name__ == '__main__':
     print("Model: ", args.model)
     print("backbone: ", args.backbone)
     print("image config size: ", args.imgsize)
-    # Configurations
-   # config_IMAGE_MAX_DIM = CocoConfig.IMAGE_MAX_DIM
-   # config_RPN_ANCHOR_SCALES = CocoConfig.RPN_ANCHOR_SCALES
-   # config_BACKBONE = CocoConfig.BACKBONE
-    #config_LEARNING_RATE = CocoConfig.LEARNING_RATE
 
-    #if (args.imgsize):
-    #    img_size = int(args.imgsize)
-    #    config_IMAGE_MAX_DIM = img_size
-    #    if (img_size < 512):
-    #        config_RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
-
-   # if (args.backbone):
-    #    config_BACKBONE = args.backbone
-   # if (args.LR):
-    #    config_LEARNING_RATE = int(args.LR)
-
-    if (args.LR):
-        learning_rate = float(args.LR)
 
     class NYUConfig(CocoConfig):
         """Configuration for training on NYU Dataset
@@ -356,12 +358,14 @@ if __name__ == '__main__':
             if (img_size < 512):
                 RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)
 
-        if (args.command == 'evaluate'):
+        if (args.command == 'evaluate' or args.command == 'evaluatedepth'):
             GPU_COUNT = 1
             IMAGES_PER_GPU = 1
             DETECTION_MIN_CONFIDENCE = 0
-
-        LEARNING_RATE = learning_rate
+        if(args.lmbda):
+            WEIGHT_DECAY = float(args.lmbda)
+        if (args.LR):
+            LEARNING_RATE = float(args.LR)
 
         STEPS_PER_EPOCH = 100
         VALIDATION_STEPS = 10
@@ -417,8 +421,6 @@ if __name__ == '__main__':
                     layers=stages,
                     augmentation=augmentation)
 
-        #if(args.eval):
-        #    evaluate_model()
 
     if args.command == 'train':
         model = modellib.MaskRCNN(mode="training", config=config,
@@ -434,8 +436,6 @@ if __name__ == '__main__':
                     layers=stages,
                     augmentation=augmentation)
 
-       # if (args.eval):
-        #    evaluate_model()
 
     if args.command == "traindepth":
         model = modellibDepth.MaskRCNN(mode="training", config=config,
@@ -451,9 +451,10 @@ if __name__ == '__main__':
                     layers=stages,
                     augmentation=augmentation)
 
-        #if (args.eval):
-        #    evaluate_model()
 
-    # Evaluate Model
+    # Evaluate Model - h5
     if args.command == "evaluate":
         evaluate_model()
+
+    if args.command == "evaluatedepth":
+        evaluate_model(type='depth')
