@@ -104,7 +104,6 @@ class NUYDataObject():
         def load_image(self, image_id, dstype='train', imagetype='rgb'):
 
             img_id = self.datasets[dstype][image_id]
-            ## img_id = 1185 ## remove
             image = self.images_masks_map[img_id][imagetype]
             '''
             f = h5py.File(NYU_DATASET_PATH, 'r')
@@ -266,17 +265,16 @@ def evaluate_model(type='RGB'):
             results = model.detect([image])
         else:
             results = model.detectWdepth([image],[depthimage])
-        # Display results
 
         r = results[0]
 
        # visualize.display_instances(image, gt_bbox, gt_mask, gt_class_id, dataset_test.class_names,
        #                             title='NYU Ground Truth')
 
-       # ax = get_ax(1)
-       # visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
+        #ax = get_ax(1)
+        #visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
         #                            dataset_test.class_names, r['scores'], ax=ax,
-       #                             title="Predictions")
+        #                           title="Predictions")
 
         try:
             AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
@@ -285,6 +283,7 @@ def evaluate_model(type='RGB'):
                 print(AP)
                 APs.append(AP)
                 print('Image %d AP = : %f' % (image_id, AP))
+                dataset_test.nyu_do.load_image(image_id)
         except:
             print('GT classes in the image are not covered')
 
