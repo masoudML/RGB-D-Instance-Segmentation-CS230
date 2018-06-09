@@ -23,8 +23,7 @@ from collections import defaultdict
 from mrcnn.config import Config
 from coco.coco import CocoConfig
 from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
-from pycocotools import mask as maskUtils
+
 
 command = 'traindepth'
 COCO_MODEL_PATH = os.path.join(PROJ_DIR, "mask_rcnn_coco.h5")
@@ -80,20 +79,8 @@ class NUYDataObject():
                 ra_depth = f['depths'][i,:,:].T #depth.transpose(1, 0)
                 depth_image = (ra_depth / np.max(ra_depth)) * 255.0
                 image_labels = f['labels'][i, :, :].T
-                # image_pil = Image.fromarray(np.uint8(ra_image))
-                # depth_pil = Image.fromarray(np.uint8(re_depth))
-                #image_name = os.path.join("data", "nyu_datasets", "%05d.jpg" % (i))
-                # image_pil.save(image_name)
-                # depth_name = os.path.join("data", "nyu_datasets", "%05d.png" % (i))
-                # depth_pil.save(depth_name)
                 image_dict = {"rgb": rgb_image, 'depth': depth_image, 'labels': image_labels}
                 self.images_masks_map[i] = image_dict
-               # if (i <= self.dataset_size[0]):
-               #     train_dataset.append(image_dict)
-               # elif (i > self.dataset_size[0] and i <= self.dataset_size[0] + self.dataset_size[1]):
-               #     dev_dataset.append(image_dict)
-               # else:
-               #     test_dataset.append(image_dict)
 
             self.datasets['train'] = train_dataset
             self.datasets['dev'] = dev_dataset
@@ -105,18 +92,7 @@ class NUYDataObject():
 
             img_id = self.datasets[dstype][image_id]
             image = self.images_masks_map[img_id][imagetype]
-            '''
-            f = h5py.File(NYU_DATASET_PATH, 'r')
-            if imagetype == 'rgb':
-                image = f['images'][img_id, :, :, :].T  # image.transpose(2, 1, 0)
-            elif imagetype == 'depth':
-                ra_depth = f['depths'][img_id, :, :].T  # depth.transpose(1, 0)
-                image = (ra_depth / np.max(ra_depth)) * 255.0
-            else:
-                image = f['labels'][img_id, :, :].T
 
-            f.close()
-            '''
             return image
 
 
@@ -124,8 +100,6 @@ class NUYDataObject():
             return self.classes
 
         def NYUtoCOCOClassId(self, nyu_cls_id):
-    #        if nyu_cls_id == 0:
-   #             return 0
             ret = -1
             if nyu_cls_id in self.nyu_coco_map.keys():
                 ret = self.nyu_coco_map[nyu_cls_id]
@@ -268,19 +242,10 @@ def evaluate_model(type='RGB'):
 
         r = results[0]
 
-       # visualize.display_instances(image, gt_bbox, gt_mask, gt_class_id, dataset_test.class_names,
-       #                             title='NYU Ground Truth')
-
-        #ax = get_ax(1)
-        #visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-        #                            dataset_test.class_names, r['scores'], ax=ax,
-        #                           title="Predictions")
-
         try:
             AP, precisions, recalls, overlaps = utils.compute_ap(gt_bbox, gt_class_id, gt_mask,
                                                          r['rois'], r['class_ids'], r['scores'], r['masks'], iou_threshold=IOU_THRESHOLD)
             if(AP > AP_THRESHOLD):
-                print(AP)
                 APs.append(AP)
                 print('Image %d AP = : %f' % (image_id, AP))
                 dataset_test.nyu_do.load_image(image_id)
@@ -288,7 +253,7 @@ def evaluate_model(type='RGB'):
             print('GT classes in the image are not covered')
 
     mAP = np.mean(np.array(APs))
-    print(mAP)
+    print('mAP : %f' % mAP)
 
 if __name__ == '__main__':
 
