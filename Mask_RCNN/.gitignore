@@ -34,8 +34,6 @@ wheels/
 pip-log.txt
 pip-delete-this-directory.txt
 
-# VS Studio Code
-.vscode
 
 # PyCharm
 .idea/
